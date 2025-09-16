@@ -45,6 +45,7 @@ class binary_message_handler:
         message_full_length = len(data)
 
         decrypted_data = []
+        decrypted_data_length = 0
 
         while True:
             if len(data) - i < message_header_length:
@@ -68,6 +69,7 @@ class binary_message_handler:
                 decrypted_data.append(data)
                 
                 i += message_length
+                decrypted_data_length += message_header_length + message_length
 
                 if i >= message_full_length:
                     break
