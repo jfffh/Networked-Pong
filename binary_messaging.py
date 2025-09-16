@@ -74,4 +74,4 @@ class binary_message_handler:
                 if i >= message_full_length:
                     break
                 
-        return decrypted_data
+        return decrypted_data, decrypted_data_length
