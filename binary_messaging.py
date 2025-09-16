@@ -1,12 +1,16 @@
 import struct
 
+BIT_ORDER = "<"
+
+HEADER_FORMAT = "BH"
+
 class binary_message:
-    def __init__(self, type:str, ecryption_format:str):
+    def __init__(self, type:str, encryption_format:str):
         self.type = type
         self.binary_type = ord(self.type)
 
-        self.encryption_format = ecryption_format
-        self.encryption_format_with_message_header = "BL" + ecryption_format
+        self.encryption_format = BIT_ORDER + encryption_format
+        self.encryption_format_with_message_header = BIT_ORDER + HEADER_FORMAT + encryption_format
 
     def encrypt_into_binary(self, *args):
         return struct.pack(self.encryption_format_with_message_header, self.binary_type, struct.calcsize(self.encryption_format), *args)
@@ -37,7 +41,7 @@ class binary_message_handler:
     def decrypt_message(self, data:bytes):
         i = 0
 
-        message_header_length = struct.calcsize("BL")
+        message_header_length = struct.calcsize(BIT_ORDER + HEADER_FORMAT)
         message_full_length = len(data)
 
         decrypted_data = []
@@ -46,7 +50,7 @@ class binary_message_handler:
             if len(data) - i < message_header_length:
                 break
 
-            message_type, message_length = struct.unpack_from("BL", data, i)
+            message_type, message_length = struct.unpack_from(BIT_ORDER + HEADER_FORMAT, data, i)
             message_type = chr(message_type)
 
             i += message_header_length
@@ -57,9 +61,15 @@ class binary_message_handler:
                 if len(data) - i < message_length:
                     break
             
-                decrypted_data.append(self.message_types[message_type].decrypt_only_message_from_binary(data, i))
+                data = self.message_types[message_type].decrypt_only_message_from_binary(data, i)
+                if len(data) == 1:
+                    data = data[0]
+
+                decrypted_data.append(data)
+                
                 i += message_length
 
                 if i >= message_full_length:
                     break
+                
         return decrypted_data
