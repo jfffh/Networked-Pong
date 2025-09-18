@@ -156,6 +156,7 @@ def listen_to_server():
                 buffer = b"".join([my_player.socket.recv(4096)])
                 decrypted_messages, decrypted_data, decrypted_data_length = message_handler.decrypt_message(buffer)
                 if len(decrypted_messages) > 0:
+                    buffer = buffer[decrypted_data_length:]
                     for message, data in zip(decrypted_messages, decrypted_data):
                         if message == "p":
                             player_id = data[0]
