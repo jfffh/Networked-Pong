@@ -48,7 +48,7 @@ pygame.init()
 screen = pygame.display.set_mode((640, 360))
 clock = pygame.time.Clock()
 
-HOST = "127.0.0.1"
+HOST = "192.168.1.108"
 PORT = 62743
 
 def init():
@@ -60,7 +60,8 @@ def init():
 
     global message_handler
     message_handler = binary_message_handler([
-        binary_message("p", "iii")
+        binary_message("p", "iii"),
+        binary_message("l", "d")
     ])
 
     global players 
@@ -75,6 +76,12 @@ def init():
     global keys_held
     keys_held = {}
 
+    global ping 
+    ping = None
+
+    global average_pings
+    average_pings = []
+
 def start_threads():
     global thread_count
     thread_count = 0
@@ -82,7 +89,7 @@ def start_threads():
     threading.Thread(target=listen_to_server).start()
 
 def main():
-    global screen, clock, my_player, run, keys_held
+    global screen, clock, my_player, run, keys_held, ping, average_pings
 
     dt = 0
 
@@ -113,8 +120,13 @@ def main():
 
         pygame.display.update()
 
+        if len(average_pings) > 0:
+            ping = sum(average_pings) / len(average_pings) * 1000
+        
+        pygame.display.set_caption("ping: " + str(ping) + "ms")
+
 def listen_to_server():
-    global run, thread_count, my_player, players, has_succesfully_connected_with_server, trying_to_connect_to_server
+    global run, thread_count, my_player, players, has_succesfully_connected_with_server, trying_to_connect_to_server, ping
 
     thread_count += 1
 
@@ -155,6 +167,10 @@ def listen_to_server():
                             else:
                                 players[player_id] = player(id=player_id)
                                 players[player_id].x, players[player_id].y = data[1], data[2]
+                        if message == "l":
+                            average_pings.append(time.time() - data)
+                            if len(average_pings) > 50:
+                                average_pings.pop(0)
                     time_since_last_message = 0
             except socket.timeout:
                 pass

@@ -63,12 +63,12 @@ class binary_message_handler:
                 if len(data) - i < message_length:
                     break
             
-                data = self.message_types[message_type].decrypt_only_message_from_binary(data, i)
-                if len(data) == 1:
-                    data = data[0]
+                message_data = self.message_types[message_type].decrypt_only_message_from_binary(data, i)
+                if len(message_data) == 1:
+                    message_data = message_data[0]
 
                 decrypted_messages.append(message_type)
-                decrypted_data.append(data)
+                decrypted_data.append(message_data)
                 
                 i += message_length
                 decrypted_data_length += message_header_length + message_length

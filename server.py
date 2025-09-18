@@ -1,11 +1,12 @@
 import time
 import socket
 import threading
+import os
 from dataclasses import dataclass
 from binary_messaging import binary_message, binary_message_handler
 from networked_player import player
 
-HOST = "127.0.0.1"
+HOST = "192.168.1.108"
 PORT = 62743
 
 def init():
@@ -17,7 +18,8 @@ def init():
 
     global message_handler
     message_handler = binary_message_handler([
-        binary_message("p", "iii")
+        binary_message("p", "iii"),
+        binary_message("l", "d")
     ])
 
     global players 
@@ -92,7 +94,7 @@ def handle_connection(target_player:player):
                 pass
 
             try:
-                messages = []
+                messages = [("l", (time.time(),))]
                 for player in players:
                     if player.id != None and player.id != target_player.id:
                         messages.append(("p", (player.id, player.x, player.y)))
