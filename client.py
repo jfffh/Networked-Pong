@@ -50,7 +50,7 @@ clock = pygame.time.Clock()
 
 def init():
     global my_player
-    my_player = controllable_player(None, int.from_bytes(secrets.token_bytes(2), byteorder=sys.byteorder))
+    my_player = controllable_player(None, int.from_bytes(secrets.token_bytes(4), byteorder=sys.byteorder))
 
     global run 
     run = True

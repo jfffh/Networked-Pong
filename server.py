@@ -1,7 +1,6 @@
 import time
 import socket
 import threading
-import os
 from binary_messaging import binary_message, binary_message_handler
 from networked_player import player
 from network_config import HOST, PORT
