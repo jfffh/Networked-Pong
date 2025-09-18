@@ -2,12 +2,9 @@ import time
 import socket
 import threading
 import os
-from dataclasses import dataclass
 from binary_messaging import binary_message, binary_message_handler
 from networked_player import player
-
-HOST = "192.168.1.108"
-PORT = 62743
+from network_config import HOST, PORT
 
 def init():
     global run 

@@ -2,11 +2,11 @@ import pygame
 import socket
 import time
 import threading
-import struct
 import secrets
 import sys
 from binary_messaging import binary_message, binary_message_handler
 import networked_player
+from network_config import HOST, PORT
 
 class player(networked_player.player):
     def render(self, screen:pygame.Surface, color:tuple):
@@ -47,9 +47,6 @@ pygame.init()
 
 screen = pygame.display.set_mode((640, 360))
 clock = pygame.time.Clock()
-
-HOST = "192.168.1.108"
-PORT = 62743
 
 def init():
     global my_player
