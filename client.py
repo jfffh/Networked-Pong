@@ -179,8 +179,12 @@ def listen_to_server():
     
             if time_since_last_message > 10:
                 break
-            
-        my_player.socket.shutdown(0)
+                
+        try:
+            my_player.socket.shutdown(0)
+        except:
+            pass
+        
         print("connection with " + HOST + ":" + str(PORT) + " terminated")
         has_succesfully_connected_with_server = False
     
