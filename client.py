@@ -73,11 +73,11 @@ def init():
     global keys_held
     keys_held = {}
 
-    global ping 
-    ping = None
+    global latency 
+    latency = None
 
-    global average_pings
-    average_pings = []
+    global average_latency
+    average_latency = []
 
 def start_threads():
     global thread_count
@@ -86,7 +86,7 @@ def start_threads():
     threading.Thread(target=listen_to_server).start()
 
 def main():
-    global screen, clock, my_player, run, keys_held, ping, average_pings
+    global screen, clock, my_player, run, keys_held, latency, average_latency
 
     dt = 0
 
@@ -117,8 +117,8 @@ def main():
 
         pygame.display.update()
 
-        if len(average_pings) > 0:
-            ping = sum(average_pings) / len(average_pings) * 1000
+        if len(average_latency) > 0:
+            latency = sum(average_latency) / len(average_latency) * 1000
         
         fps = clock.get_fps()
         if fps == float("inf"):
@@ -126,10 +126,10 @@ def main():
         else:
             fps = round(fps)
         
-        pygame.display.set_caption("latency: " + str(ping) + " ms | fps: " + str(fps))
+        pygame.display.set_caption("latency: " + str(latency) + " ms | fps: " + str(fps))
 
 def listen_to_server():
-    global run, thread_count, my_player, players, has_succesfully_connected_with_server, trying_to_connect_to_server, ping
+    global run, thread_count, my_player, players, has_succesfully_connected_with_server, trying_to_connect_to_server, latency
 
     thread_count += 1
 
@@ -171,9 +171,9 @@ def listen_to_server():
                                 players[player_id] = player(id=player_id)
                                 players[player_id].x, players[player_id].y = data[1], data[2]
                         if message == "l":
-                            average_pings.append(time.time() - data)
-                            if len(average_pings) > 50:
-                                average_pings.pop(0)
+                            average_latency.append(time.time() - data)
+                            if len(average_latency) > 50:
+                                average_latency.pop(0)
                     time_since_last_message = 0
                     buffer = buffer[decrypted_data_length:]
             except socket.timeout:
