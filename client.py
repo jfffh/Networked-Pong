@@ -126,7 +126,7 @@ def main():
         else:
             fps = round(fps)
         
-        pygame.display.set_caption("ping: " + str(ping) + " ms | fps: " + str(fps))
+        pygame.display.set_caption("latency: " + str(ping) + " ms | fps: " + str(fps))
 
 def listen_to_server():
     global run, thread_count, my_player, players, has_succesfully_connected_with_server, trying_to_connect_to_server, ping
