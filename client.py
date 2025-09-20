@@ -50,7 +50,7 @@ clock = pygame.time.Clock()
 
 def init():
     global my_player
-    my_player = controllable_player(None, int.from_bytes(secrets.token_bytes(4), byteorder=sys.byteorder))
+    my_player = controllable_player(None, int.from_bytes(secrets.token_bytes(3), byteorder=sys.byteorder))
 
     global run 
     run = True
@@ -91,7 +91,7 @@ def main():
     dt = 0
 
     while run:
-        dt = clock.tick() / 1000
+        dt = clock.tick(60) / 1000
 
         events = pygame.event.get()
 
@@ -120,7 +120,13 @@ def main():
         if len(average_pings) > 0:
             ping = sum(average_pings) / len(average_pings) * 1000
         
-        pygame.display.set_caption("ping: " + str(ping) + " ms | fps: " + str(round(clock.get_fps())))
+        fps = clock.get_fps()
+        if fps == float("inf"):
+            fps = None
+        else:
+            fps = round(fps)
+        
+        pygame.display.set_caption("ping: " + str(ping) + " ms | fps: " + str(fps))
 
 def listen_to_server():
     global run, thread_count, my_player, players, has_succesfully_connected_with_server, trying_to_connect_to_server, ping
@@ -156,7 +162,6 @@ def listen_to_server():
                 buffer = b"".join([my_player.socket.recv(4096)])
                 decrypted_messages, decrypted_data, decrypted_data_length = message_handler.decrypt_message(buffer)
                 if len(decrypted_messages) > 0:
-                    buffer = buffer[decrypted_data_length:]
                     for message, data in zip(decrypted_messages, decrypted_data):
                         if message == "p":
                             player_id = data[0]
@@ -170,6 +175,7 @@ def listen_to_server():
                             if len(average_pings) > 50:
                                 average_pings.pop(0)
                     time_since_last_message = 0
+                    buffer = buffer[decrypted_data_length:]
             except socket.timeout:
                 pass
             except (ConnectionAbortedError, ConnectionResetError):
