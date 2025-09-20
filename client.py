@@ -120,7 +120,7 @@ def main():
         if len(average_pings) > 0:
             ping = sum(average_pings) / len(average_pings) * 1000
         
-        pygame.display.set_caption("ping: " + str(ping) + "ms")
+        pygame.display.set_caption("ping: " + str(ping) + " ms | fps: " + str(round(clock.get_fps())))
 
 def listen_to_server():
     global run, thread_count, my_player, players, has_succesfully_connected_with_server, trying_to_connect_to_server, ping
@@ -184,7 +184,7 @@ def listen_to_server():
             my_player.socket.shutdown(0)
         except:
             pass
-        
+
         print("connection with " + HOST + ":" + str(PORT) + " terminated")
         has_succesfully_connected_with_server = False
     
