@@ -7,6 +7,7 @@ import sys
 from binary_messaging import binary_message, binary_message_handler
 import networked_player
 from network_config import HOST, PORT
+import global_time
 
 class player(networked_player.player):
     def render(self, screen:pygame.Surface, color:tuple):
@@ -171,7 +172,7 @@ def listen_to_server():
                                 players[player_id] = player(id=player_id)
                                 players[player_id].x, players[player_id].y = data[1], data[2]
                         if message == "l":
-                            average_latency.append(time.monotonic() - data)
+                            average_latency.append(global_time.time() - data)
                             if len(average_latency) > 50:
                                 average_latency.pop(0)
                     time_since_last_message = 0

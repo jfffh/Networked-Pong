@@ -4,6 +4,7 @@ import threading
 from binary_messaging import binary_message, binary_message_handler
 from networked_player import player
 from network_config import HOST, PORT
+import global_time
 
 def init():
     global run 
@@ -90,7 +91,7 @@ def handle_connection(target_player:player):
                 pass
 
             try:
-                messages = [("l", (time.monotonic(),))]
+                messages = [("l", (global_time.time(),))]
                 for player in players:
                     if player.id != None and player.id != target_player.id:
                         messages.append(("p", (player.id, player.x, player.y)))
