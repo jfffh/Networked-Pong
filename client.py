@@ -118,7 +118,7 @@ def main():
         pygame.display.update()
 
         if len(average_latency) > 0:
-            latency = sum(average_latency) / len(average_latency) * 1000
+            latency = sum(average_latency) / len(average_latency)
         
         fps = clock.get_fps()
         if fps == float("inf"):
