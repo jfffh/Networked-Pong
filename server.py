@@ -74,6 +74,8 @@ def handle_connection(target_player:player):
 
     time_since_last_message = 0
 
+    last_latency_check = time.time()
+
     with target_player.socket:
         while run:
             try:
@@ -91,10 +93,13 @@ def handle_connection(target_player:player):
                 pass
 
             try:
-                messages = [("l", (global_time.time(),))]
+                messages = []
                 for player in players:
                     if player.id != None and player.id != target_player.id:
                         messages.append(("p", (player.id, player.x, player.y)))
+                if time.time() - last_latency_check > 5:
+                    messages.append(("l", (global_time.time(),)))
+                    last_latency_check = time.time()
                 if len(messages) > 0:
                     target_player.socket.send(message_handler.encrypt_message(messages))
             except socket.timeout:

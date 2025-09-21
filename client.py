@@ -77,9 +77,6 @@ def init():
     global latency 
     latency = None
 
-    global average_latency
-    average_latency = []
-
 def start_threads():
     global thread_count
     thread_count = 0
@@ -87,7 +84,7 @@ def start_threads():
     threading.Thread(target=listen_to_server).start()
 
 def main():
-    global screen, clock, my_player, run, keys_held, latency, average_latency
+    global screen, clock, my_player, run, keys_held, latency
 
     dt = 0
 
@@ -117,9 +114,6 @@ def main():
             player.render(screen, (0, 255, 0))
 
         pygame.display.update()
-
-        if len(average_latency) > 0:
-            latency = sum(average_latency) / len(average_latency) * 1000
         
         fps = clock.get_fps()
         if fps == float("inf"):
@@ -172,9 +166,10 @@ def listen_to_server():
                                 players[player_id] = player(id=player_id)
                                 players[player_id].x, players[player_id].y = data[1], data[2]
                         if message == "l":
-                            average_latency.append(global_time.time() - data)
-                            if len(average_latency) > 50:
-                                average_latency.pop(0)
+                            try:
+                               latency = (global_time.time() - data) * 1000
+                            except:
+                                latency = (time.time() - data) * 1000
                     time_since_last_message = 0
                     buffer = buffer[decrypted_data_length:]
             except socket.timeout:

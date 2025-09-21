@@ -1,7 +1,10 @@
 import ntplib
 
+NTP_CLIENT = ntplib.NTPClient()
+
 def time():
-    c = ntplib.NTPClient()
-    response = c.request('europe.pool.ntp.org', version=3)
-    response.offset
-    return response.tx_time
+    try:
+        return NTP_CLIENT.request('pool.ntp.org', version=3).tx_time
+    except:
+        print(False)
+        return None
