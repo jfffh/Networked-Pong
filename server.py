@@ -90,7 +90,7 @@ def handle_connection(target_player:player):
                 pass
 
             try:
-                messages = [("l", (time.time(),))]
+                messages = [("l", (time.monotonic(),))]
                 for player in players:
                     if player.id != None and player.id != target_player.id:
                         messages.append(("p", (player.id, player.x, player.y)))

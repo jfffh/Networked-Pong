@@ -118,7 +118,7 @@ def main():
         pygame.display.update()
 
         if len(average_latency) > 0:
-            latency = sum(average_latency) / len(average_latency)
+            latency = sum(average_latency) / len(average_latency) * 1000
         
         fps = clock.get_fps()
         if fps == float("inf"):
@@ -171,7 +171,7 @@ def listen_to_server():
                                 players[player_id] = player(id=player_id)
                                 players[player_id].x, players[player_id].y = data[1], data[2]
                         if message == "l":
-                            average_latency.append(time.time() - data)
+                            average_latency.append(time.monotonic() - data)
                             if len(average_latency) > 50:
                                 average_latency.pop(0)
                     time_since_last_message = 0
