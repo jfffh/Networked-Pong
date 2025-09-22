@@ -86,19 +86,24 @@ class binary_message_handler:
                 return False, None, None
         
         decrypted_data = []
+        decrypted_messages = []
+        decrypted_data_length = 0
+        read_data_length = 0
 
         while True:
+            if i + header_size >= len(data):
+                break
+
             success, new_i, message = get_message(i, delimiter)
 
             if success:
-                if i + header_size >= len(data):
-                    break
 
                 header_1, header_2 = struct.unpack_from(header, message, 0)
 
                 if header_1 == header_2:
                     if not chr(header_1) in self.message_types:
                         i = new_i
+                        read_data_length += len(message)
                         continue
 
                     message_type = self.message_types[chr(header_1)]
@@ -109,13 +114,18 @@ class binary_message_handler:
                     try:
                         message_data = self.message_types[chr(header_1)].decrypt_only_message_from_binary(message, header_size)
                         decrypted_data.append(message_data)
+                        decrypted_messages.append(message_type.type)
+
+                        i = new_i
+                        read_data_length += len(message)
+                        decrypted_data_length += len(message)
+                        continue
 
                     except Exception:
                         i = new_i
+                        read_data_length += len(message)
                         continue
-            
-                i = new_i
             else:
                 break
         
-        return decrypted_data
+        return decrypted_messages, decrypted_data, read_data_length, decrypted_data_length
