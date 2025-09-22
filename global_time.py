@@ -6,5 +6,4 @@ def time():
     try:
         return NTP_CLIENT.request('pool.ntp.org', version=3).tx_time
     except:
-        print(False)
         return None
