@@ -3,7 +3,7 @@ import socket
 import threading
 from binary_messaging import binary_message, binary_message_handler
 from networked_player import player
-from network_config import HOST, PORT
+from server_network_config import HOST, PORT
 import global_time
 
 def init():
