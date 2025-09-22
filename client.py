@@ -151,6 +151,9 @@ def listen_to_server():
         time_since_last_message = 0
 
         buffer = b""
+
+        start_ntp_time = global_time.time()
+        start_time = time.time()
         
         while run:
             try:
@@ -166,10 +169,7 @@ def listen_to_server():
                                 players[player_id] = player(id=player_id)
                                 players[player_id].x, players[player_id].y = data[1], data[2]
                         if message == "l":
-                            try:
-                               latency = (global_time.time() - data) * 1000
-                            except:
-                                latency = (time.time() - data) * 1000
+                            latency = ((start_ntp_time + (time.time() - start_time)) - data) * 1000
                     time_since_last_message = 0
                     buffer = buffer[decrypted_data_length:]
             except socket.timeout:
