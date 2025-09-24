@@ -76,56 +76,46 @@ class binary_message_handler:
 
         header = "".join(repeat(HEADER_FORMAT))
         header_size = struct.calcsize(header)
-
-        def get_message(start_i:int, delimiter:bytes):
-            delimiter_index = data.find(delimiter, start_i)
-
-            if delimiter_index != -1:
-                return True, delimiter_index + 1, data[start_i:delimiter_index]
-            else:
-                return False, None, None
         
         decrypted_data = []
         decrypted_messages = []
-        decrypted_data_length = 0
-        read_data_length = 0
 
         while True:
-            if i + header_size >= len(data):
-                break
+            delimiter_index = data.find(delimiter, i)
 
-            success, new_i, message = get_message(i, delimiter)
+            if delimiter_index == -1:
+                return decrypted_messages, decrypted_data, i
 
-            if success:
+            message = data[i:delimiter_index + 1]
 
-                header_1, header_2 = struct.unpack_from(header, message, 0)
+            if len(message) < header_size + 1:
+                i = delimiter_index + 1
+                continue
 
-                if header_1 == header_2:
-                    if not chr(header_1) in self.message_types:
-                        i = new_i
-                        read_data_length += len(message)
-                        continue
 
-                    message_type = self.message_types[chr(header_1)]
+            header_1, header_2 = struct.unpack_from(header, message, 0)
 
-                    if i + header_size + message_type.expected_size >= len(data):
-                        break
+            if header_1 != header_2:
+                i = delimiter_index + 1
+                continue
 
-                    try:
-                        message_data = self.message_types[chr(header_1)].decrypt_only_message_from_binary(message, header_size)
-                        decrypted_data.append(message_data)
-                        decrypted_messages.append(message_type.type)
+            message_type_type = chr(header_1)
 
-                        i = new_i
-                        read_data_length += len(message)
-                        decrypted_data_length += len(message)
-                        continue
+            if not message_type_type in self.message_types:
+                i = delimiter_index + 1
+                continue
 
-                    except Exception:
-                        i = new_i
-                        read_data_length += len(message)
-                        continue
-            else:
-                break
-        
-        return decrypted_messages, decrypted_data, read_data_length, decrypted_data_length
+            message_type = self.message_types[chr(header_1)]
+
+            if len(message) <= header_size + message_type.expected_size:
+                i = delimiter_index + 1
+                continue
+
+            try:   
+                message_data = self.message_types[chr(header_1)].decrypt_only_message_from_binary(message, header_size)
+                decrypted_messages.append(message_type.type)
+                decrypted_data.append(message_data)
+            except Exception:
+                pass
+
+            i = delimiter_index + 1
