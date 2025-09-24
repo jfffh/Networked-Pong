@@ -40,7 +40,8 @@ pygame.init()
 screen = pygame.display.set_mode((640, 360))
 clock = pygame.time.Clock()
 
-MY_IP = "127.0.0.1"
+# MY_IP = "127.0.0.1"
+MY_IP = socket.gethostbyname(socket.gethostname())
 AVAILABLE_PORTS = [port for port in range(62743, 65535)]
 
 def init():
