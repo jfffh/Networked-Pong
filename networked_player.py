@@ -1,9 +1,10 @@
 import socket
 
 class player:
-    def __init__(self, socket:socket.socket|None = None, address:tuple|None = (None, None), id:int|None = None):
+    def __init__(self, address:tuple = (None, None), id:int|None = None, team:int = 0):
         self.x = 0
         self.y = 0
-        self.socket = socket
         self.address = address
         self.id = id
+        self.last_message = None
+        self.team = team
