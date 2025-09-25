@@ -161,6 +161,7 @@ def handle_TCP_handshake(handshake_socket:socket.socket, address:tuple):
 
     buffer = b""
 
+
     print("handling handshake with: ", address[0] + ":" + str(address[1]))
 
     while run and handshake_completed == False:
