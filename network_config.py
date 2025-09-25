@@ -1,3 +1,7 @@
-SERVER_IP = "10.104.113.16"
+import socket
+for ip in socket.gethostbyname_ex(socket.gethostname())[2]:
+    if ip != "127.0.0.1":
+        SERVER_IP = ip
+SERVER_IP = "127.0.0.1"
 SERVER_UDP_PORT = 62743
 SERVER_TCP_PORT = 62744

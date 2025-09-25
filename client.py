@@ -4,16 +4,19 @@ import time
 import threading
 import secrets
 import sys
+import requests
 from binary_messaging import binary_message, binary_message_handler
 import networked_player
 import global_time
 from network_config import SERVER_IP, SERVER_TCP_PORT, SERVER_UDP_PORT
+import art
 
 class player(networked_player.player):
-    def render(self, screen:pygame.Surface, color:tuple):
-        surface = pygame.Surface((32, 32))
-        surface.fill(color)
-        screen.blit(surface, surface.get_rect(center = (self.x, self.y)))
+    def render(self, screen:pygame.Surface):
+        if self.team == 0:
+            screen.blit(art.blue_paddle, art.blue_paddle.get_rect(center = (self.x, self.y)))
+        elif self.team == 1:
+            screen.blit(art.yellow_paddle, art.yellow_paddle.get_rect(center = (self.x, self.y)))
 
 class controllable_player(player):
     def __init__(self, id:int):
@@ -28,34 +31,38 @@ class controllable_player(player):
             self.x -= 100 * dt
         if keys_held.get(pygame.K_RIGHT, False) or keys_held.get(pygame.K_d, False):
             self.x += 100 * dt
-
-        self.x = max(min(self.x, 720), 0)
-        self.y = max(min(self.y, 360), 0)
-
-    def render(self, screen:pygame.Surface):
-        return super().render(screen, (255, 0, 0))
-
+        
+        if self.team == 0:
+            self.x = max(min(self.x, 320), 0)
+            self.y = max(min(self.y, 360), 0)
+        elif self.team == 1:
+            self.x = max(min(self.x, 640), 320)
+            self.y = max(min(self.y, 360), 0)
+        
 pygame.init()
 
 screen = pygame.display.set_mode((640, 360))
 clock = pygame.time.Clock()
 
-# MY_IP = "127.0.0.1"
-MY_IP = socket.gethostbyname(socket.gethostname())
+for ip in socket.gethostbyname_ex(socket.gethostname())[2]:
+    if ip != "127.0.0.1":
+        MY_IP = ip
+MY_IP = "127.0.0.1"
 AVAILABLE_PORTS = [port for port in range(62743, 65535)]
 
 def init():
     global my_player
     my_player = controllable_player(int.from_bytes(secrets.token_bytes(3), byteorder=sys.byteorder))
 
-    global run 
+    global run
     run = True
 
     global message_handler
     message_handler = binary_message_handler([
-        binary_message("p", "iii"),
+        binary_message("p", "iBii"),
         binary_message("h", "ii"),
-        binary_message("l", "d")
+        binary_message("l", "d"),
+        binary_message("H", "B")
     ])
 
     global players 
@@ -114,7 +121,7 @@ def main():
         my_player.render(screen)
             
         for player in players.values():
-            player.render(screen, (0, 255, 0))
+            player.render(screen)
 
         pygame.display.update()
         
@@ -152,12 +159,13 @@ def listen_to_server():
         if len(decrypted_messages) > 0:
             for message, data in zip(decrypted_messages, decrypted_data):
                 if message == "p":
-                    if data[0] in players:
-                        pass
-                    else:
-                        players[data[0]] = player(None, data[0])
-                    players[data[0]].x, players[data[0]].y = data[1], data[2]
-                    players[data[0]].last_message = time.time()
+                    if data[0] != my_player.id:
+                        if data[0] in players:
+                            pass
+                        else:
+                            players[data[0]] = player(None, data[0], data[1])
+                        players[data[0]].team, players[data[0]].x, players[data[0]].y = data[1], data[2], data[3]
+                        players[data[0]].last_message = time.time()
                 elif message == "l":
                     latency = abs(((start_ntp_time + (time.time() - start_time)) - data[0]) * 1000)
             
@@ -178,10 +186,9 @@ def communicate_with_server():
     while run:
         try:
             client_UDP_socket.sendto(
-                message_handler.encrypt_message([("p", (my_player.id, round(my_player.x), round(my_player.y)))]),
+                message_handler.encrypt_message([("p", (my_player.id, my_player.team, round(my_player.x), round(my_player.y)))]),
                 (SERVER_IP, SERVER_UDP_PORT)
             )
-            time_since_last_message = 0
         except socket.timeout:
             pass
         except (ConnectionAbortedError, ConnectionRefusedError, ConnectionResetError):
@@ -226,7 +233,7 @@ def attempt_tcp_handshake():
         client_TCP_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, True)
         client_TCP_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, True)
         client_TCP_socket.settimeout(1)
-        print("awaiting tcp handshake...")
+        print("attempting tcp handshake...")
         try:
             client_TCP_socket.connect((SERVER_IP, SERVER_TCP_PORT))
             connected = True
@@ -237,9 +244,33 @@ def attempt_tcp_handshake():
         client_TCP_socket.sendall(
             message_handler.encrypt_message([("h", (my_player.id, MY_UDP_PORT))])
         )
-        
+
+        handshake_completed = False
+
+        buffer = b""
+
+        while run and handshake_completed == False:
+            try:
+                buffer = b"".join([client_TCP_socket.recv(4096)])
+                decrypted_messages, decrypted_data, decrypted_data_length = message_handler.decrypt_message(buffer)
+                if len(decrypted_messages) > 0:
+                    buffer = buffer[decrypted_data_length:]
+                    for message, data in zip(decrypted_messages, decrypted_data):
+                        if message == "H":
+                            my_player.team = data[0]
+                            if data[0] == 0:
+                                my_player.x = 160
+                            elif data[0] == 1:
+                                my_player.x = 480
+                            my_player.y = 180
+                            handshake_completed = True
+                    buffer = buffer[decrypted_data_length:]
+            except socket.timeout:
+                pass
+            except (ConnectionAbortedError, ConnectionResetError):
+                pass
         print("handshake with " + SERVER_IP + ":" + str(SERVER_TCP_PORT) + " completed")
-    
+        
     return
         
 init()

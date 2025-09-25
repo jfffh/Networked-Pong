@@ -1,14 +1,15 @@
 import time
 import socket
 import threading
+import random
 from binary_messaging import binary_message, binary_message_handler
 import networked_player
 import global_time
 from network_config import SERVER_IP, SERVER_TCP_PORT, SERVER_UDP_PORT
 
 class player(networked_player.player):
-    def __init__(self, address:tuple = (None, None), id:int|None = None):
-        super().__init__(address, id)
+    def __init__(self, address:tuple = (None, None), id:int|None = None, team:int = 0):
+        super().__init__(address, id, team)
         self.buffer = b""
 
 def init():
@@ -17,9 +18,10 @@ def init():
 
     global message_handler
     message_handler = binary_message_handler([
-        binary_message("p", "iii"),
+        binary_message("p", "iBii"),
         binary_message("h", "ii"),
-        binary_message("l", "d")
+        binary_message("l", "d"),
+        binary_message("H", "B")
     ])
 
     global players
@@ -84,7 +86,7 @@ def listen_to_clients():
         if len(decrypted_messages) > 0:
             for message, data in zip(decrypted_messages, decrypted_data):
                 if message == "p":
-                    networked_player.id, networked_player.x, networked_player.y = data
+                    networked_player.id, networked_player.team, networked_player.x, networked_player.y = data
                         
         networked_player.buffer = networked_player.buffer[decrypted_data_length:]
 
@@ -105,10 +107,11 @@ def communicate_with_clients():
 
     while run:
         try:
-            messages = [("l", (start_ntp_time + (time.time() - start_time),))]
+            # messages = [("l", (start_ntp_time + (time.time() - start_time),))]
+            messages = []
             for networked_player in players.copy().values():
                 if networked_player.id != None:
-                    messages.append(("p", (networked_player.id, networked_player.x, networked_player.y)))
+                    messages.append(("p", (networked_player.id, networked_player.team, networked_player.x, networked_player.y)))
             data = message_handler.encrypt_message(messages)
             for player_address in players.copy().keys():
                 server_UDP_socket.sendto(data, player_address)
@@ -168,7 +171,32 @@ def handle_TCP_handshake(handshake_socket:socket.socket, address:tuple):
                 buffer = buffer[decrypted_data_length:]
                 for message, data in zip(decrypted_messages, decrypted_data):
                     if message == "h":
-                        players[(address[0], data[1])] = player(address, data[0])
+                        blue_team = 0
+                        yellow_team = 0
+                        for networked_player in players.values():
+                            if networked_player.team == 0:
+                                blue_team += 1
+                            elif networked_player.team == 1:
+                                yellow_team += 1
+
+                        if blue_team > yellow_team:
+                            team = 1
+                        elif blue_team < yellow_team:
+                            team = 0
+                        else:
+                            team = random.randint(0, 1)
+                        
+                        if team == 0:
+                            print("the new player has been assigned to the blue team")
+                        else:
+                            print("the new player has been assigned to the yellow team")
+
+                        players[(address[0], data[1])] = player(address, data[0], team)
+                        handshake_socket.sendall(
+                            message_handler.encrypt_message([
+                                ("H", (team,))
+                            ])
+                        )
                         handshake_completed = True
                 buffer = buffer[decrypted_data_length:]
         except socket.timeout:
@@ -176,7 +204,7 @@ def handle_TCP_handshake(handshake_socket:socket.socket, address:tuple):
         except (ConnectionAbortedError, ConnectionResetError):
             pass
 
-    handshake_socket.shutdown(0)
+    handshake_socket.close()
 
     print("handshake with " + address[0] + ":" + str(address[1]) + " completed")
     
