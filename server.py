@@ -20,57 +20,53 @@ class player(networked_player.player):
 class ball(ball):
     def __init__(self):
         super().__init__()
-        self.speed_x, self.speed_y = 150, 0
+        self.reset()
+        self.time = time.time()
 
     def update(self, players:dict[tuple:player], dt:float):
-        self.x += self.speed_x * dt; self.y += self.speed_y * dt
+        global yellow_team_score, blue_team_score
 
-        if self.y > 360:
-            self.y = 360
-            self.speed_y *= -1
-        elif self.y < 0:
-            self.y = 0
-            self.speed_y *= -1
+        if time.time() - self.time > 5:
+            self.x += self.speed_x * dt; self.y += self.speed_y * dt
 
-        if self.x > 640:
-            self.x = 640
-            self.speed_x *= -1
-        elif self.x < 0:
-            self.x = 0
-            self.speed_x *= -1
+            if self.y > 360:
+                self.y = 360
+                self.speed_y *= -1
+            elif self.y < 0:
+                self.y = 0
+                self.speed_y *= -1
 
-        player_rect = pygame.Rect(0, 0, 8, 32)
+            if self.x > 640:
+                blue_team_score += 1
+                self.reset()
+            elif self.x < 0:
+                yellow_team_score += 1
+                self.reset()
 
-        for player in players.copy().values():
-            player_rect.center = (player.x, player.y)
-            if player_rect.collidepoint((self.x, self.y)):
-                if self.speed_x < 0:
-                    self.x = player_rect.right + 1
-                    self.speed_x *= -1
-                    self.speed_y = -((player.y - self.y) / 0.053)
-                elif self.speed_x > 0:
-                    self.x = player_rect.left - 1
-                    self.speed_x *= -1
-                    self.speed_y = -((player.y - self.y) / 0.053)
+            player_rect = pygame.Rect(0, 0, 8, 32)
 
-
-        # if self.speed_x < 0:
-        #     for player in players.copy().values():
-        #         if self.y >= player.y - 16 and self.y <= player.y + 16:
-        #             if self.x - self.RADIUS < player.x + 4:
-        #                 print("leftwards collision")
-        #                 self.x = player.x + self.RADIUS + 4
-        #                 self.speed_x *= -1
-        #                 self.speed_y = -((player.y - self.y) / 0.04)
-
-        # else:
-        #     for player in players.copy().values():
-        #         if self.y >= player.y - 16 and self.y <= player.y + 16:
-        #             if self.x + self.RADIUS > player.x - 4:
-        #                 print("rightwards collision")
-        #                 self.x = player.x - self.RADIUS - 4
-        #                 self.speed_x *= -1
-        #                 self.speed_y = -((player.y - self.y) / 0.04)
+            for player in players.copy().values():
+                player_rect.center = (player.x, player.y)
+                if player_rect.collidepoint((self.x, self.y)):
+                    if self.speed_x < 0:
+                        self.x = player_rect.right + 1
+                        self.speed_x *= -1
+                        self.speed_y = -((player.y - self.y) / 0.053)
+                    elif self.speed_x > 0:
+                        self.x = player_rect.left - 1
+                        self.speed_x *= -1
+                        self.speed_y = -((player.y - self.y) / 0.053)
+        else:
+            pass
+    
+    def reset(self):
+        self.x, self.y = 320, 180
+        if random.randint(0, 1) == 0:
+            self.speed_x = 150
+        else:
+            self.speed_x = -150
+        self.speed_y = 0
+        self.time = time.time()
 
 def init():
     global run 
@@ -82,7 +78,7 @@ def init():
         binary_message("h", "ii"),
         binary_message("l", "d"),
         binary_message("H", "B"),
-        binary_message("b", "ii"),
+        binary_message("g", "IIii"),
     ])
 
     global players
@@ -95,6 +91,12 @@ def init():
 
     global networked_ball 
     networked_ball = ball()
+
+    global blue_team_score
+    blue_team_score = 0
+
+    global yellow_team_score
+    yellow_team_score = 0
 
 def start_threads():
     global thread_count
@@ -112,10 +114,10 @@ def main():
         clock = pygame.Clock()
         while run:
             dt = clock.tick(60) / 1000
-            if len(players) > 0:
+            if len(players) >= 2:
                 networked_ball.update(players, dt)
             else:
-                networked_ball.x, networked_ball.y = 320, 180
+                networked_ball.reset()
     except KeyboardInterrupt:
         run = False
 
@@ -153,7 +155,6 @@ def listen_to_clients():
         if len(decrypted_messages) > 0:
             for message, data in zip(decrypted_messages, decrypted_data):
                 if message == "p":
-                    # print(data)
                     networked_player.id, networked_player.team, networked_player.x, networked_player.y = data
                         
         networked_player.buffer = networked_player.buffer[decrypted_data_length:]
@@ -164,7 +165,7 @@ def listen_to_clients():
     return
 
 def communicate_with_clients():
-    global thread_count, run, players, server_UDP_socket, networked_ball
+    global thread_count, run, players, server_UDP_socket, networked_ball, blue_team_score, yellow_team_score
 
     thread_count += 1
 
@@ -178,7 +179,7 @@ def communicate_with_clients():
         for networked_player in players.copy().values():
             if networked_player.id != None:
                 messages.append(("p", (networked_player.id, networked_player.team, networked_player.x, networked_player.y)))
-        messages.append(("b", (round(networked_ball.x), round(networked_ball.y))))
+        messages.append(("g", (blue_team_score, yellow_team_score, round(networked_ball.x), round(networked_ball.y))))
         data = message_handler.encrypt_message(messages)
         for player_address in players.copy().keys():
             try:

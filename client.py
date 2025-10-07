@@ -68,7 +68,7 @@ def init():
         binary_message("h", "ii"),
         binary_message("l", "d"),
         binary_message("H", "B"),
-        binary_message("b", "ii")
+        binary_message("g", "IIii")
     ])
 
     global players 
@@ -87,7 +87,6 @@ def init():
             MY_UDP_PORT = port
         except:
             pass
-    # client_UDP_socket.settimeout(1)
     client_UDP_socket.setblocking(False)
 
     global connected 
@@ -99,17 +98,30 @@ def init():
     global networked_ball
     networked_ball = ball()
 
+    global blue_team_score
+    blue_team_score = 0
+
+    global yellow_team_score
+    yellow_team_score = 0
+
+def show_loading_screen():
+    global screen
+
+    screen.fill((0, 0, 0))
+    screen.blit(assets.loading_screen, assets.loading_screen.get_rect(center = (320, 180)))
+
+    pygame.display.update()
+
 def start_threads():
     global thread_count
     thread_count = 0
 
-    if connected:
-        threading.Thread(target=listen_to_server).start()
-        threading.Thread(target=communicate_with_server).start()
-        threading.Thread(target=check_for_timed_out_players).start()
+    threading.Thread(target=listen_to_server).start()
+    threading.Thread(target=communicate_with_server).start()
+    threading.Thread(target=check_for_timed_out_players).start()
 
 def main():
-    global screen, clock, my_player, run, keys_held
+    global screen, clock, my_player, run, keys_held, blue_team_score, yellow_team_score
     dt = 0
 
     while run:
@@ -138,6 +150,14 @@ def main():
         if networked_ball.has_updated:
             screen.blit(assets.ball, assets.ball.get_rect(center = (networked_ball.x, networked_ball.y)))
 
+        surface = assets.font.render(str(blue_team_score), False, (0, 212, 255))
+        surface.set_colorkey((0, 0, 0))
+        screen.blit(surface, surface.get_rect(topleft=(16, 16)))
+
+        surface = assets.font.render(str(yellow_team_score), False, (255, 244, 0))
+        surface.set_colorkey((0, 0, 0))
+        screen.blit(surface, surface.get_rect(topright=(624, 16)))
+
         pygame.display.update()
         
         fps = clock.get_fps()
@@ -147,9 +167,37 @@ def main():
             fps = round(fps)
 
         pygame.display.set_caption("latency: " + str(round(latency, 4)) + " ms | fps: " + str(fps))
+
+def alternate_main():
+    global run, screen
+
+    while run:
+        dt = clock.tick(60) / 1000
+
+        events = pygame.event.get()
+
+        for event in events:
+            if event.type == pygame.QUIT:
+                run = False
         
+        screen.fill((0, 0, 0))
+
+        surface = assets.font.render("can't connect to server", False, (255, 255, 255))
+        surface.set_colorkey((0, 0, 0))
+        screen.blit(surface, surface.get_rect(center=(320, 180)))
+
+        pygame.display.update()
+        
+        fps = clock.get_fps()
+        if fps == float("inf"):
+            fps = None
+        else:
+            fps = round(fps)
+
+        pygame.display.set_caption("fps: " + str(fps))
+    
 def listen_to_server():
-    global run, thread_count, my_player, players, client_UDP_socket, latency, ball
+    global run, thread_count, my_player, players, client_UDP_socket, latency, networked_ball, blue_team_score, yellow_team_score
 
     thread_count += 1
 
@@ -185,8 +233,8 @@ def listen_to_server():
                         players[data[0]].last_message = time.time()
                 elif message == "l":
                     latency = abs(((start_ntp_time + (time.time() - start_time)) - data[0]) * 1000)
-                elif message == "b":
-                    networked_ball.x, networked_ball.y = data[0], data[1]
+                elif message == "g":
+                    blue_team_score, yellow_team_score, networked_ball.x, networked_ball.y = data
                     networked_ball.has_updated = True
             
             buffer = buffer[decrypted_data_length:]
@@ -299,8 +347,12 @@ def attempt_tcp_handshake():
     return
         
 init()
+show_loading_screen()
 attempt_tcp_handshake()
-start_threads()
-main()
-await_threads()
+if connected:
+    start_threads()
+    main()
+    await_threads()
+else:
+    alternate_main()
 print("program killed")
