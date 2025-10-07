@@ -1,5 +1,3 @@
-import socket
-
 class player:
     def __init__(self, address:tuple = (None, None), id:int|None = None, team:int = 0):
         self.x = 0

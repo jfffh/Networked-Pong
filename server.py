@@ -6,11 +6,71 @@ from binary_messaging import binary_message, binary_message_handler
 import networked_player
 import global_time
 from network_config import SERVER_IP, SERVER_TCP_PORT, SERVER_UDP_PORT
+from networked_ball import ball
+import pygame
+import math
+
+pygame.init()
 
 class player(networked_player.player):
     def __init__(self, address:tuple = (None, None), id:int|None = None, team:int = 0):
         super().__init__(address, id, team)
         self.buffer = b""
+
+class ball(ball):
+    def __init__(self):
+        super().__init__()
+        self.speed_x, self.speed_y = 150, 0
+
+    def update(self, players:dict[tuple:player], dt:float):
+        self.x += self.speed_x * dt; self.y += self.speed_y * dt
+
+        if self.y > 360:
+            self.y = 360
+            self.speed_y *= -1
+        elif self.y < 0:
+            self.y = 0
+            self.speed_y *= -1
+
+        if self.x > 640:
+            self.x = 640
+            self.speed_x *= -1
+        elif self.x < 0:
+            self.x = 0
+            self.speed_x *= -1
+
+        player_rect = pygame.Rect(0, 0, 8, 32)
+
+        for player in players.copy().values():
+            player_rect.center = (player.x, player.y)
+            if player_rect.collidepoint((self.x, self.y)):
+                if self.speed_x < 0:
+                    self.x = player_rect.right + 1
+                    self.speed_x *= -1
+                    self.speed_y = -((player.y - self.y) / 0.053)
+                elif self.speed_x > 0:
+                    self.x = player_rect.left - 1
+                    self.speed_x *= -1
+                    self.speed_y = -((player.y - self.y) / 0.053)
+
+
+        # if self.speed_x < 0:
+        #     for player in players.copy().values():
+        #         if self.y >= player.y - 16 and self.y <= player.y + 16:
+        #             if self.x - self.RADIUS < player.x + 4:
+        #                 print("leftwards collision")
+        #                 self.x = player.x + self.RADIUS + 4
+        #                 self.speed_x *= -1
+        #                 self.speed_y = -((player.y - self.y) / 0.04)
+
+        # else:
+        #     for player in players.copy().values():
+        #         if self.y >= player.y - 16 and self.y <= player.y + 16:
+        #             if self.x + self.RADIUS > player.x - 4:
+        #                 print("rightwards collision")
+        #                 self.x = player.x - self.RADIUS - 4
+        #                 self.speed_x *= -1
+        #                 self.speed_y = -((player.y - self.y) / 0.04)
 
 def init():
     global run 
@@ -21,7 +81,8 @@ def init():
         binary_message("p", "iBii"),
         binary_message("h", "ii"),
         binary_message("l", "d"),
-        binary_message("H", "B")
+        binary_message("H", "B"),
+        binary_message("b", "ii"),
     ])
 
     global players
@@ -30,7 +91,10 @@ def init():
     global server_UDP_socket 
     server_UDP_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     server_UDP_socket.bind((SERVER_IP, SERVER_UDP_PORT))
-    server_UDP_socket.settimeout(1)
+    server_UDP_socket.setblocking(False)
+
+    global networked_ball 
+    networked_ball = ball()
 
 def start_threads():
     global thread_count
@@ -39,18 +103,19 @@ def start_threads():
     threading.Thread(target=listen_to_clients).start()
     threading.Thread(target=communicate_with_clients).start()
     threading.Thread(target=listen_for_TCP_handshakes).start()
+    threading.Thread(target=check_for_timed_out_players).start()
 
 def main():
-    global run, players
-    
+    global run, networked_ball, players
+
     try:
+        clock = pygame.Clock()
         while run:
-            for player_address, player in players.copy().items():
-                if player.last_message != None:
-                    if time.time() - player.last_message > 10:
-                        print("player at " + player_address[0] + ":" + str(player_address[1]) + " timed out")
-                        del players[player_address]
-            time.sleep(0.1)
+            dt = clock.tick(60) / 1000
+            if len(players) > 0:
+                networked_ball.update(players, dt)
+            else:
+                networked_ball.x, networked_ball.y = 320, 180
     except KeyboardInterrupt:
         run = False
 
@@ -64,6 +129,8 @@ def listen_to_clients():
     while run:
         try:
             data, address = server_UDP_socket.recvfrom(4096)
+        except BlockingIOError:
+            continue
         except socket.timeout:
             continue
         except (ConnectionAbortedError, ConnectionRefusedError, ConnectionResetError):
@@ -86,6 +153,7 @@ def listen_to_clients():
         if len(decrypted_messages) > 0:
             for message, data in zip(decrypted_messages, decrypted_data):
                 if message == "p":
+                    # print(data)
                     networked_player.id, networked_player.team, networked_player.x, networked_player.y = data
                         
         networked_player.buffer = networked_player.buffer[decrypted_data_length:]
@@ -96,7 +164,7 @@ def listen_to_clients():
     return
 
 def communicate_with_clients():
-    global thread_count, run, players, server_UDP_socket
+    global thread_count, run, players, server_UDP_socket, networked_ball
 
     thread_count += 1
 
@@ -106,19 +174,21 @@ def communicate_with_clients():
     start_time = time.time()
 
     while run:
-        try:
-            # messages = [("l", (start_ntp_time + (time.time() - start_time),))]
-            messages = []
-            for networked_player in players.copy().values():
-                if networked_player.id != None:
-                    messages.append(("p", (networked_player.id, networked_player.team, networked_player.x, networked_player.y)))
-            data = message_handler.encrypt_message(messages)
-            for player_address in players.copy().keys():
+        messages = [("l", (start_ntp_time + (time.time() - start_time),))]
+        for networked_player in players.copy().values():
+            if networked_player.id != None:
+                messages.append(("p", (networked_player.id, networked_player.team, networked_player.x, networked_player.y)))
+        messages.append(("b", (round(networked_ball.x), round(networked_ball.y))))
+        data = message_handler.encrypt_message(messages)
+        for player_address in players.copy().keys():
+            try:
                 server_UDP_socket.sendto(data, player_address)
-        except socket.timeout:
-            continue
-        except (ConnectionAbortedError, ConnectionRefusedError, ConnectionResetError):
-            continue
+            except BlockingIOError:
+                continue
+            except socket.timeout:
+                continue
+            except (ConnectionAbortedError, ConnectionRefusedError, ConnectionResetError):
+                continue
 
     print("stopped sending data though " + SERVER_IP + ":" + str(SERVER_UDP_PORT))
 
@@ -210,6 +280,22 @@ def handle_TCP_handshake(handshake_socket:socket.socket, address:tuple):
     print("handshake with " + address[0] + ":" + str(address[1]) + " completed")
     
     thread_count -= 1
+
+def check_for_timed_out_players():
+    global thread_count, run, players
+
+    thread_count += 1
+
+    while run:
+        for player_address, player in players.copy().items():
+            if player.last_message != None:
+                if time.time() - player.last_message > 10:
+                    print("player at " + player_address[0] + ":" + str(player_address[1]) + " timed out")
+                    del players[player_address]
+        time.sleep(1)
+
+    thread_count -= 1
+    return
 
 def await_threads():
     global thread_count
