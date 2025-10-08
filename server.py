@@ -227,17 +227,16 @@ def handle_TCP_handshake(handshake_socket:socket.socket, address:tuple):
 
     handshake_completed = False
 
-    buffer = b""
-
+    buffer = utils.buffer()
 
     print("handling handshake with: ", address[0] + ":" + str(address[1]))
 
     while run and handshake_completed == False:
         try:
-            buffer = b"".join([handshake_socket.recv(4096)])
-            decrypted_messages, decrypted_data, decrypted_data_length = message_handler.decrypt_message(buffer)
+            buffer.add_bytes(handshake_socket.recv(4096))
+            decrypted_messages, decrypted_data, decrypted_data_length = message_handler.decrypt_message(buffer.bytearray)
+            del buffer.bytearray[:decrypted_data_length]
             if len(decrypted_messages) > 0:
-                buffer = buffer[decrypted_data_length:]
                 for message, data in zip(decrypted_messages, decrypted_data):
                     if message == "h":
                         blue_team = 0
@@ -267,7 +266,6 @@ def handle_TCP_handshake(handshake_socket:socket.socket, address:tuple):
                             ])
                         )
                         handshake_completed = True
-                buffer = buffer[decrypted_data_length:]
         except socket.timeout:
             pass
         except (ConnectionAbortedError, ConnectionResetError):

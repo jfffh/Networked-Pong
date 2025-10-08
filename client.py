@@ -307,17 +307,15 @@ def attempt_tcp_handshake():
 
         handshake_completed = False
 
-        buffer = b""
+        buffer = utils.buffer()
 
         while run and handshake_completed == False:
-
             try:
-                buffer = b"".join([client_TCP_socket.recv(4096)])
-                decrypted_messages, decrypted_data, decrypted_data_length = message_handler.decrypt_message(buffer)
+                buffer.add_bytes(client_TCP_socket.recv(4096))
+                decrypted_messages, decrypted_data, decrypted_data_length = message_handler.decrypt_message(buffer.bytearray)
+                del buffer.bytearray[:decrypted_data_length]
                 if len(decrypted_messages) > 0:
-                    buffer = buffer[decrypted_data_length:]
                     for message, data in zip(decrypted_messages, decrypted_data):
-
                         if message == "H":
                             my_player.team = data[0]
                             if data[0] == 0:
@@ -326,8 +324,6 @@ def attempt_tcp_handshake():
                                 my_player.x = 480
                             my_player.y = 180
                             handshake_completed = True
-
-                    buffer = buffer[decrypted_data_length:]
             except socket.timeout:
                 pass
             except (ConnectionAbortedError, ConnectionResetError):
