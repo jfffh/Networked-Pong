@@ -44,7 +44,6 @@ class binary_message:
 
         return return_data
         
-        
     def decrypt_only_message_from_binary(self, data:bytes, offset:int = 0):
         decrypted_data = struct.unpack_from(self.encryption_format, data, offset)
 
@@ -91,8 +90,7 @@ class binary_message_handler:
             if len(message) < header_size + 1:
                 i = delimiter_index + 1
                 continue
-
-
+            
             header_1, header_2 = struct.unpack_from(header, message, 0)
 
             if header_1 != header_2:

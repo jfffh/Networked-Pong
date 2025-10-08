@@ -4,9 +4,9 @@ import time
 import threading
 import secrets
 import sys
-from binary_messaging import binary_message, binary_message_handler
+from networking import *
+from networking.binary_messaging import binary_message, binary_message_handler
 import networked_player
-import global_time
 from network_config import SERVER_IP, SERVER_TCP_PORT, SERVER_UDP_PORT
 import assets
 from networked_ball import ball
@@ -49,9 +49,7 @@ pygame.init()
 screen = pygame.display.set_mode((640, 360))
 clock = pygame.time.Clock()
 
-for ip in socket.gethostbyname_ex(socket.gethostname())[2]:
-    if ip != "127.0.0.1":
-        MY_IP = ip
+MY_IP = networking.get_ip()
 MY_IP = "127.0.0.1"
 AVAILABLE_PORTS = [port for port in range(62743, 65535)]
 
@@ -79,14 +77,9 @@ def init():
 
     global client_UDP_socket
     client_UDP_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    for port in AVAILABLE_PORTS:
-        try:
-            client_UDP_socket.bind((MY_IP, port))
 
-            global MY_UDP_PORT
-            MY_UDP_PORT = port
-        except:
-            pass
+    global MY_UDP_PORT
+    MY_UDP_PORT = networking.bind_socket_to_available_port(client_UDP_socket, MY_IP)
     client_UDP_socket.setblocking(False)
 
     global connected 
@@ -116,9 +109,9 @@ def start_threads():
     global thread_count
     thread_count = 0
 
-    threading.Thread(target=listen_to_server).start()
-    threading.Thread(target=communicate_with_server).start()
-    threading.Thread(target=check_for_timed_out_players).start()
+    utils.thread(listen_to_server)
+    utils.thread(communicate_with_server)
+    utils.thread(check_for_timed_out_players)
 
 def main():
     global screen, clock, my_player, run, keys_held, blue_team_score, yellow_team_score
@@ -203,16 +196,15 @@ def listen_to_server():
 
     print("listening at " + MY_IP + ":" + str(MY_UDP_PORT))
 
-    buffer = b""
+    buffer = utils.buffer()
 
-    start_ntp_time = global_time.time()
-    start_time = time.time()
+    time_manager = utils.time_manager()
         
     while run:
         try:
             data, address = client_UDP_socket.recvfrom(4096)
             if address != (MY_IP, MY_UDP_PORT):
-                buffer = b"".join([buffer, data])
+                buffer.add_bytes(data)
         except BlockingIOError:
             continue
         except socket.timeout:
@@ -220,7 +212,7 @@ def listen_to_server():
         except (ConnectionAbortedError, ConnectionRefusedError, ConnectionResetError):
             continue
             
-        decrypted_messages, decrypted_data, decrypted_data_length = message_handler.decrypt_message(buffer)
+        decrypted_messages, decrypted_data, decrypted_data_length = message_handler.decrypt_message(buffer.bytearray)
         if len(decrypted_messages) > 0:
             for message, data in zip(decrypted_messages, decrypted_data):
                 if message == "p":
@@ -232,12 +224,12 @@ def listen_to_server():
                         players[data[0]].team, players[data[0]].x, players[data[0]].y = data[1], data[2], data[3]
                         players[data[0]].last_message = time.time()
                 elif message == "l":
-                    latency = abs(((start_ntp_time + (time.time() - start_time)) - data[0]) * 1000)
+                    latency = abs((time_manager.time() - data[0]) * 1000)
                 elif message == "g":
                     blue_team_score, yellow_team_score, networked_ball.x, networked_ball.y = data
                     networked_ball.has_updated = True
             
-            buffer = buffer[decrypted_data_length:]
+            del buffer.bytearray[:decrypted_data_length]
 
     print("stopped listening at " + MY_IP + ":" + str(MY_UDP_PORT))
                     
@@ -300,9 +292,7 @@ def attempt_tcp_handshake():
     global connected, my_player
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_TCP_socket:
-        client_TCP_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, True)
-        client_TCP_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, True)
-        client_TCP_socket.settimeout(1)
+        networking.configure_TCP_socket(client_TCP_socket)
         print("attempting tcp handshake...")
         try:
             client_TCP_socket.connect((SERVER_IP, SERVER_TCP_PORT))

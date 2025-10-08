@@ -2,9 +2,9 @@ import time
 import socket
 import threading
 import random
-from binary_messaging import binary_message, binary_message_handler
+from networking import *
+from networking.binary_messaging import binary_message, binary_message_handler
 import networked_player
-import global_time
 from network_config import SERVER_IP, SERVER_TCP_PORT, SERVER_UDP_PORT
 from networked_ball import ball
 import pygame
@@ -15,7 +15,7 @@ pygame.init()
 class player(networked_player.player):
     def __init__(self, address:tuple = (None, None), id:int|None = None, team:int = 0):
         super().__init__(address, id, team)
-        self.buffer = b""
+        self.buffer = utils.buffer()
 
 class ball(ball):
     def __init__(self):
@@ -102,10 +102,10 @@ def start_threads():
     global thread_count
     thread_count = 0
 
-    threading.Thread(target=listen_to_clients).start()
-    threading.Thread(target=communicate_with_clients).start()
-    threading.Thread(target=listen_for_TCP_handshakes).start()
-    threading.Thread(target=check_for_timed_out_players).start()
+    utils.thread(listen_to_clients)
+    utils.thread(communicate_with_clients)
+    utils.thread(listen_for_TCP_handshakes)
+    utils.thread(check_for_timed_out_players)
 
 def main():
     global run, networked_ball, players
@@ -149,15 +149,15 @@ def listen_to_clients():
 
         networked_player:player = players[address]
         networked_player.last_message = time.time()
-        networked_player.buffer = b"".join([networked_player.buffer, data])
+        networked_player.buffer.add_bytes(data)
 
-        decrypted_messages, decrypted_data, decrypted_data_length = message_handler.decrypt_message(networked_player.buffer)
+        decrypted_messages, decrypted_data, decrypted_data_length = message_handler.decrypt_message(networked_player.buffer.bytearray)
         if len(decrypted_messages) > 0:
             for message, data in zip(decrypted_messages, decrypted_data):
                 if message == "p":
                     networked_player.id, networked_player.team, networked_player.x, networked_player.y = data
                         
-        networked_player.buffer = networked_player.buffer[decrypted_data_length:]
+        del networked_player.buffer.bytearray[:decrypted_data_length]
 
     print("stopped listening at " + SERVER_IP + ":" + str(SERVER_UDP_PORT))
 
@@ -171,11 +171,10 @@ def communicate_with_clients():
 
     print("sending data though " + SERVER_IP + ":" + str(SERVER_UDP_PORT))
 
-    start_ntp_time = global_time.time()
-    start_time = time.time()
+    time_manager = utils.time_manager()
 
     while run:
-        messages = [("l", (start_ntp_time + (time.time() - start_time),))]
+        messages = [("l", (time_manager.time(),))]
         for networked_player in players.copy().values():
             if networked_player.id != None:
                 messages.append(("p", (networked_player.id, networked_player.team, networked_player.x, networked_player.y)))
@@ -203,15 +202,13 @@ def listen_for_TCP_handshakes():
 
     print("listening for handshakes at " + SERVER_IP + ":" + str(SERVER_TCP_PORT))
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_TCP_socket:
-        server_TCP_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, True)
-        server_TCP_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, True)
-        server_TCP_socket.settimeout(1)
+        networking.configure_TCP_socket(server_TCP_socket)
         server_TCP_socket.bind((SERVER_IP, SERVER_TCP_PORT))
         while run:
             server_TCP_socket.listen()
             try:
                 connection, address = server_TCP_socket.accept()
-                threading.Thread(target=handle_TCP_handshake, args=[connection, address]).start()
+                utils.thread(handle_TCP_handshake, connection, address)
             except socket.timeout:
                 continue
 
