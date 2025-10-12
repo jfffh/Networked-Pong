@@ -50,18 +50,18 @@ class ball(ball):
                 for player in players.copy().values():
                     player_rect.center = (player.x, player.y)
                     if player_rect.collidepoint((self.x, self.y)):
-                        if self.speed_x < 0:
-                            self.x = player_rect.right + 1
+                        if self.x > player.x:
+                            self.x = player_rect.right
                             self.speed_x *= -1
                             self.speed_y = -((player.y - self.y) / 0.053)
                             self.collision_immunity = 100
-                        elif self.speed_x > 0:
-                            self.x = player_rect.left - 1
+                        elif self.x < player.x:
+                            self.x = player_rect.left
                             self.speed_x *= -1
                             self.speed_y = -((player.y - self.y) / 0.053)
                             self.collision_immunity = 100
             else:
-                self.collision_immunity -= 1000  * dt
+                self.collision_immunity -= 1000 * dt
                 if self.collision_immunity < 0:
                     self.collision_immunity = 0
         else:

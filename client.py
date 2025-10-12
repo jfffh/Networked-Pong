@@ -24,13 +24,13 @@ class controllable_player(player):
 
     def update(self, keys_held:dict, dt:float):
         if keys_held.get(pygame.K_UP, False) or keys_held.get(pygame.K_w, False):
-            self.y -= 180 * dt
+            self.y -= 120 * dt
         if keys_held.get(pygame.K_DOWN, False) or keys_held.get(pygame.K_s, False):
-            self.y += 180 * dt
+            self.y += 120 * dt
         if keys_held.get(pygame.K_LEFT, False) or keys_held.get(pygame.K_a, False):
-            self.x -= 180 * dt
+            self.x -= 120 * dt
         if keys_held.get(pygame.K_RIGHT, False) or keys_held.get(pygame.K_d, False):
-            self.x += 180 * dt
+            self.x += 120 * dt
         
         if self.team == 0:
             self.x = max(min(self.x, 320), 0)
@@ -50,6 +50,7 @@ screen = pygame.display.set_mode((640, 360))
 clock = pygame.time.Clock()
 
 MY_IP = networking.get_ip()
+MY_IP = "localhost"
 AVAILABLE_PORTS = [port for port in range(62743, 65535)]
 
 def init():
