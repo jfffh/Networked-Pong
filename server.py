@@ -22,6 +22,7 @@ class ball(ball):
         super().__init__()
         self.reset()
         self.time = time.time()
+        self.collision_immunity = 0
 
     def update(self, players:dict[tuple:player], dt:float):
         global yellow_team_score, blue_team_score
@@ -43,19 +44,26 @@ class ball(ball):
                 yellow_team_score += 1
                 self.reset()
 
-            player_rect = pygame.Rect(0, 0, 8, 32)
+            if self.collision_immunity == 0:
+                player_rect = pygame.Rect(0, 0, 8, 32)
 
-            for player in players.copy().values():
-                player_rect.center = (player.x, player.y)
-                if player_rect.collidepoint((self.x, self.y)):
-                    if self.speed_x < 0:
-                        self.x = player_rect.right + 1
-                        self.speed_x *= -1
-                        self.speed_y = -((player.y - self.y) / 0.053)
-                    elif self.speed_x > 0:
-                        self.x = player_rect.left - 1
-                        self.speed_x *= -1
-                        self.speed_y = -((player.y - self.y) / 0.053)
+                for player in players.copy().values():
+                    player_rect.center = (player.x, player.y)
+                    if player_rect.collidepoint((self.x, self.y)):
+                        if self.speed_x < 0:
+                            self.x = player_rect.right + 1
+                            self.speed_x *= -1
+                            self.speed_y = -((player.y - self.y) / 0.053)
+                            self.collision_immunity = 100
+                        elif self.speed_x > 0:
+                            self.x = player_rect.left - 1
+                            self.speed_x *= -1
+                            self.speed_y = -((player.y - self.y) / 0.053)
+                            self.collision_immunity = 100
+            else:
+                self.collision_immunity -= 1000  * dt
+                if self.collision_immunity < 0:
+                    self.collision_immunity = 0
         else:
             pass
     
