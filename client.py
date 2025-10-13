@@ -277,7 +277,7 @@ def listen_to_server():
         if len(decrypted_messages) > 0:
             for message, data in zip(decrypted_messages, decrypted_data):
                 if message == "p":
-                    # if data[0] != my_player.id:
+                    if data[0] != my_player.id:
                         if data[0] in players:
                             pass
                         else:
