@@ -229,6 +229,8 @@ def listen_to_server():
                     networked_ball.has_updated = True
             
             del buffer.bytearray[:decrypted_data_length]
+        
+        time.sleep(0.01)
 
     print("stopped listening at " + MY_IP + ":" + str(MY_UDP_PORT))
                     
@@ -254,6 +256,8 @@ def communicate_with_server():
             continue
         except (ConnectionAbortedError, ConnectionRefusedError, ConnectionResetError):
             continue
+
+        time.sleep(0.01)
 
     print("stopped sending data though " + MY_IP + ":" + str(MY_UDP_PORT))
                             
