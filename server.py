@@ -167,8 +167,6 @@ def listen_to_clients():
                         
         del networked_player.buffer.bytearray[:decrypted_data_length]
 
-        time.sleep(0.01)
-
     print("stopped listening at " + SERVER_IP + ":" + str(SERVER_UDP_PORT))
 
     thread_count -= 1
@@ -199,8 +197,6 @@ def communicate_with_clients():
                 continue
             except (ConnectionAbortedError, ConnectionRefusedError, ConnectionResetError):
                 continue
-
-        time.sleep(0.01)
 
     print("stopped sending data though " + SERVER_IP + ":" + str(SERVER_UDP_PORT))
 
