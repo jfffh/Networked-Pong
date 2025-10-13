@@ -82,11 +82,11 @@ def init():
 
     global message_handler
     message_handler = binary_message_handler([
-        binary_message("p", "iBii"),
+        binary_message("p", "iBiid"),
         binary_message("h", "ii"),
         binary_message("l", "d"),
         binary_message("H", "B"),
-        binary_message("g", "IIii"),
+        binary_message("g", "IIiid"),
     ])
 
     global players
@@ -163,7 +163,7 @@ def listen_to_clients():
         if len(decrypted_messages) > 0:
             for message, data in zip(decrypted_messages, decrypted_data):
                 if message == "p":
-                    networked_player.id, networked_player.team, networked_player.x, networked_player.y = data
+                    networked_player.id, networked_player.team, networked_player.x, networked_player.y = data[0], data[1], data[2], data[3]
                         
         del networked_player.buffer.bytearray[:decrypted_data_length]
 
@@ -185,8 +185,8 @@ def communicate_with_clients():
         messages = [("l", (time_manager.time(),))]
         for networked_player in players.copy().values():
             if networked_player.id != None:
-                messages.append(("p", (networked_player.id, networked_player.team, networked_player.x, networked_player.y)))
-        messages.append(("g", (blue_team_score, yellow_team_score, round(networked_ball.x), round(networked_ball.y))))
+                messages.append(("p", (networked_player.id, networked_player.team, networked_player.x, networked_player.y, time_manager.time())))
+        messages.append(("g", (blue_team_score, yellow_team_score, round(networked_ball.x), round(networked_ball.y), time_manager.time())))
         data = message_handler.encrypt_message(messages)
         for player_address in players.copy().keys():
             try:

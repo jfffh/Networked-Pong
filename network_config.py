@@ -1,4 +1,5 @@
 import socket
 SERVER_IP = "192.168.1.101"
+SERVER_IP = "localhost"
 SERVER_UDP_PORT = 62743
 SERVER_TCP_PORT = 62744

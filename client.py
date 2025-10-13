@@ -12,6 +12,35 @@ import assets
 from networked_ball import ball
 
 class player(networked_player.player):
+    def __init__(self, address:tuple = (None, None), id:int|None = None, team:int = 0):
+        super().__init__(address, id, team)
+        self.old_position_message = None
+        self.new_position_message = None
+        self.lerp_time = 0
+
+    def received_new_position_message(self, position_message:tuple):
+        if self.old_position_message == None and self.new_position_message == None:
+            self.old_position_message = position_message
+            self.new_position_message = position_message
+            self.lerp_time = 0
+        else:
+            if position_message[2] < self.new_position_message[2]:
+                return
+            self.old_position_message = self.new_position_message
+            self.new_position_message = position_message
+            self.lerp_time = 0
+
+    def update(self, dt:float):
+        if self.old_position_message != None and self.new_position_message != None:
+            time_difference = (self.new_position_message[2] - self.old_position_message[2]) * 1000
+            self.lerp_time += 1000 * dt
+            self.lerp_time = min(self.lerp_time, time_difference)
+            if time_difference == 0:
+                self.x, self.y = self.new_position_message[0], self.new_position_message[1]
+            else:
+                self.x = pygame.math.lerp(self.old_position_message[0], self.new_position_message[0], self.lerp_time / time_difference)
+                self.y = pygame.math.lerp(self.old_position_message[1], self.new_position_message[1], self.lerp_time / time_difference)
+
     def render(self, screen:pygame.Surface):
         if self.team == 0:
             screen.blit(assets.blue_paddle, assets.blue_paddle.get_rect(center = (self.x, self.y)))
@@ -44,12 +73,40 @@ class ball(ball):
         super().__init__()
         self.has_updated = False
 
+        self.old_position_message = None
+        self.new_position_message = None
+        self.lerp_time = 0
+
+    def received_new_position_message(self, position_message:tuple):
+        if self.old_position_message == None and self.new_position_message == None:
+            self.old_position_message = position_message
+            self.new_position_message = position_message
+            self.lerp_time = 0
+        else:
+            if position_message[2] < self.new_position_message[2]:
+                return
+            self.old_position_message = self.new_position_message
+            self.new_position_message = position_message
+            self.lerp_time = 0
+
+    def update(self, dt:float):
+        if self.old_position_message != None and self.new_position_message != None:
+            time_difference = (self.new_position_message[2] - self.old_position_message[2]) * 1000
+            self.lerp_time += 1000 * dt
+            self.lerp_time = min(self.lerp_time, time_difference)
+            if time_difference == 0:
+                self.x, self.y = self.new_position_message[0], self.new_position_message[1]
+            else:
+                self.x = pygame.math.lerp(self.old_position_message[0], self.new_position_message[0], self.lerp_time / time_difference)
+                self.y = pygame.math.lerp(self.old_position_message[1], self.new_position_message[1], self.lerp_time / time_difference)
+
 pygame.init()
 
 screen = pygame.display.set_mode((640, 360))
 clock = pygame.time.Clock()
 
 MY_IP = networking.get_ip()
+MY_IP = "localhost"
 AVAILABLE_PORTS = [port for port in range(62743, 65535)]
 
 def init():
@@ -61,11 +118,11 @@ def init():
 
     global message_handler
     message_handler = binary_message_handler([
-        binary_message("p", "iBii"),
+        binary_message("p", "iBiid"),
         binary_message("h", "ii"),
         binary_message("l", "d"),
         binary_message("H", "B"),
-        binary_message("g", "IIii")
+        binary_message("g", "IIiid")
     ])
 
     global players 
@@ -135,6 +192,11 @@ def main():
         
         my_player.update(keys_held, dt)
         my_player.render(screen)
+
+        networked_ball.update(dt)
+
+        for player in players.values():
+            player.update(dt)
             
         for player in players.values():
             player.render(screen)
@@ -215,17 +277,19 @@ def listen_to_server():
         if len(decrypted_messages) > 0:
             for message, data in zip(decrypted_messages, decrypted_data):
                 if message == "p":
-                    if data[0] != my_player.id:
+                    # if data[0] != my_player.id:
                         if data[0] in players:
                             pass
                         else:
                             players[data[0]] = player(None, data[0], data[1])
-                        players[data[0]].team, players[data[0]].x, players[data[0]].y = data[1], data[2], data[3]
+                        players[data[0]].received_new_position_message((data[2], data[3], data[4]))
+                        players[data[0]].team = data[1]
                         players[data[0]].last_message = time.time()
                 elif message == "l":
                     latency = abs((time_manager.time() - data[0]) * 1000)
                 elif message == "g":
-                    blue_team_score, yellow_team_score, networked_ball.x, networked_ball.y = data
+                    blue_team_score, yellow_team_score = data[0], data[1]
+                    networked_ball.received_new_position_message((data[2], data[3], data[4]))
                     networked_ball.has_updated = True
             
             del buffer.bytearray[:decrypted_data_length]
@@ -240,12 +304,14 @@ def communicate_with_server():
 
     thread_count += 1
 
+    time_manager = utils.time_manager()
+
     print("sending data though " + MY_IP + ":" + str(MY_UDP_PORT))
 
     while run:
         try:
             client_UDP_socket.sendto(
-                message_handler.encrypt_message([("p", (my_player.id, my_player.team, round(my_player.x), round(my_player.y)))]),
+                message_handler.encrypt_message([("p", (my_player.id, my_player.team, round(my_player.x), round(my_player.y), time_manager.time()))]),
                 (SERVER_IP, SERVER_UDP_PORT)
             )
         except BlockingIOError:
