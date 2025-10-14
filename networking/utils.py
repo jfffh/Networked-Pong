@@ -24,6 +24,9 @@ class time_manager:
     def __init__(self):
         self.start_time = time.time()
         self.start_ntp_time = ntp_time()
+        while self.start_ntp_time == None:
+            self.start_ntp_time = ntp_time()
+        print("ntp initialized")
 
     def time(self):
         return self.start_ntp_time + (time.time() - self.start_time)
