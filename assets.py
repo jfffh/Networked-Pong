@@ -17,7 +17,7 @@ yellow_paddle.set_colorkey((0, 0, 0))
 ball = pygame.image.load("assets/ball.png").convert()
 ball.set_colorkey((0, 0, 0))
 
-font = pygame.Font("assets/Vaticanus.ttf", 20)
+font = pygame.font.Font("assets/Vaticanus.ttf", 20)
 
 loading_screen = font.render("loading...", False, (255, 255, 255))
 loading_screen.set_colorkey((0, 0, 0))
