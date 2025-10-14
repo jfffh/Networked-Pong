@@ -145,6 +145,8 @@ def listen_to_clients():
             continue
         except (ConnectionAbortedError, ConnectionRefusedError, ConnectionResetError):
             continue
+        except OSError:
+            continue
         
         if address == (SERVER_IP, SERVER_UDP_PORT):
             continue
@@ -166,6 +168,8 @@ def listen_to_clients():
                     networked_player.id, networked_player.team, networked_player.x, networked_player.y = data[0], data[1], data[2], data[3]
                         
         del networked_player.buffer.bytearray[:decrypted_data_length]
+
+        time.sleep(0.01)
 
     print("stopped listening at " + SERVER_IP + ":" + str(SERVER_UDP_PORT))
 
@@ -197,6 +201,10 @@ def communicate_with_clients():
                 continue
             except (ConnectionAbortedError, ConnectionRefusedError, ConnectionResetError):
                 continue
+            except OSError:
+                continue
+
+        time.sleep(0.01)
 
     print("stopped sending data though " + SERVER_IP + ":" + str(SERVER_UDP_PORT))
 
