@@ -106,7 +106,6 @@ screen = pygame.display.set_mode((640, 360))
 clock = pygame.time.Clock()
 
 MY_IP = networking.get_ip()
-MY_IP = "localhost"
 AVAILABLE_PORTS = [port for port in range(62743, 65535)]
 
 def init():
