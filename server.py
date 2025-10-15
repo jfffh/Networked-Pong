@@ -140,12 +140,16 @@ def listen_to_clients():
         try:
             data, address = server_UDP_socket.recvfrom(4096)
         except BlockingIOError:
+            time.sleep(0.001)
             continue
         except socket.timeout:
+            time.sleep(0.001)
             continue
         except (ConnectionAbortedError, ConnectionRefusedError, ConnectionResetError):
+            time.sleep(0.001)
             continue
         except OSError:
+            time.sleep(0.001)
             continue
         
         if address == (SERVER_IP, SERVER_UDP_PORT):
@@ -194,12 +198,16 @@ def communicate_with_clients():
             try:
                 server_UDP_socket.sendto(data, player_address)
             except BlockingIOError:
+                time.sleep(0.001)
                 continue
             except socket.timeout:
+                time.sleep(0.001)
                 continue
             except (ConnectionAbortedError, ConnectionRefusedError, ConnectionResetError):
+                time.sleep(0.001)
                 continue
             except OSError:
+                time.sleep(0.001)
                 continue
 
     print("stopped sending data though " + SERVER_IP + ":" + str(SERVER_UDP_PORT))

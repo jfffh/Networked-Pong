@@ -105,7 +105,7 @@ pygame.init()
 screen = pygame.display.set_mode((640, 360))
 clock = pygame.time.Clock()
 
-MY_IP = networking.get_ip()
+MY_IP = "0.0.0.0"
 AVAILABLE_PORTS = [port for port in range(62743, 65535)]
 
 def init():
@@ -263,15 +263,19 @@ def listen_to_server():
     while run:
         try:
             data, address = client_UDP_socket.recvfrom(4096)
-            if address != (MY_IP, MY_UDP_PORT):
+            if address != (MY_IP, MY_UDP_PORT) and MY_IP != "localhost":
                 buffer.add_bytes(data)
         except BlockingIOError:
+            time.sleep(0.001)
             continue
         except socket.timeout:
+            time.sleep(0.001)
             continue
         except (ConnectionAbortedError, ConnectionRefusedError, ConnectionResetError):
+            time.sleep(0.001)
             continue
         except OSError:
+            time.sleep(0.001)
             continue
             
         decrypted_messages, decrypted_data, decrypted_data_length = message_handler.decrypt_message(buffer.bytearray)
@@ -316,12 +320,16 @@ def communicate_with_server():
                 (SERVER_IP, SERVER_UDP_PORT)
             )
         except BlockingIOError:
+            time.sleep(0.001)
             continue
         except socket.timeout:
+            time.sleep(0.001)
             continue
         except (ConnectionAbortedError, ConnectionRefusedError, ConnectionResetError):
+            time.sleep(0.001)
             continue
         except OSError:
+            time.sleep(0.001)
             continue
 
     print("stopped sending data though " + MY_IP + ":" + str(MY_UDP_PORT))
